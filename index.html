@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#12100e">
+<title>Duel Training</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: a dark stage. One fretboard card in the middle, controls above, stats below. */
+:root{
+  --bg:#12100e; --panel:#1b1714; --panel2:#241e19; --line:#3a3129;
+  --text:#efe7dc; --muted:#a09386; --accent:#f0a43a; --ok:#43c47a; --bad:#ef5350;
+  --board:#2a1c13; --board2:#33241a; --wire:#a7a5ab; --string:#cdbb9c;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'Noto Sans Thai','Sarabun',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 var(--body);
+  padding-block:14px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));}
+.wrap{max-width:1120px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+button,select,textarea,input{font:inherit;color:inherit}
+button{touch-action:manipulation;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 20px}
+h1{margin:0;font:900 clamp(34px,6vw,54px)/0.95 var(--display);letter-spacing:.02em;text-transform:uppercase}
+h1 span{color:var(--accent)}
+.sub{margin:4px 0 0;color:var(--muted);font-size:14px}
+.tabs{display:flex;gap:6px}
+.tab{background:transparent;border:1px solid var(--line);border-radius:999px;padding:7px 18px;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#1a1208;font-weight:700}
+
+.bar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:var(--panel);border:0;border-right:1px solid var(--line);padding:9px 15px;min-width:44px;color:var(--muted)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--text);box-shadow:inset 0 -3px 0 var(--accent);font-weight:700}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stage-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px;min-height:44px}
+.status{font:800 clamp(22px,3.4vw,30px)/1.15 var(--display);letter-spacing:.03em;text-transform:uppercase}
+.status small{display:block;font:400 14px/1.4 var(--body);letter-spacing:0;text-transform:none;color:var(--muted)}
+.status.ok{color:var(--ok)} .status.bad{color:var(--bad)}
+.heard{font-family:var(--mono);font-size:14px;color:var(--muted);min-width:11ch;text-align:right}
+.boardbox{margin-top:10px;overflow-x:auto}
+.boardbox svg{display:block;width:100%;height:auto;min-width:560px}
+.boardbox.tap .pos{cursor:pointer}
+.pos{transition:fill .12s}
+.timer{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:10px}
+.timer i{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left}
+.timer[hidden]{display:none}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:11px 20px;min-height:46px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1a1208;font-weight:700;padding-inline:30px}
+.btn:disabled{opacity:.4;cursor:default}
+.note{color:var(--muted);font-size:13px;margin:0}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.stat b{display:block;font:800 30px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+.chip{border:1px solid var(--line);border-radius:99px;padding:2px 11px}
+.chip.done{border-color:var(--ok);color:var(--ok)}
+
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+summary{cursor:pointer;color:var(--muted)}
+textarea{width:100%;min-height:110px;margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-family:var(--mono);font-size:12px}
+
+.tuner{display:flex;flex-direction:column;align-items:center;gap:8px;padding:26px 16px}
+.tnote{font:900 clamp(90px,22vw,170px)/1 var(--display)}
+.thz{font-family:var(--mono);color:var(--muted);height:1.5em}
+.cents{position:relative;width:min(100%,520px);height:46px;border-radius:10px;background:var(--panel2);border:1px solid var(--line)}
+.cents::before{content:"";position:absolute;left:50%;top:6px;bottom:6px;width:2px;background:var(--ok);transform:translateX(-1px)}
+.cents i{position:absolute;top:6px;bottom:6px;width:6px;border-radius:3px;background:var(--accent);left:50%;transform:translateX(-3px);transition:left .08s}
+.meter{width:min(100%,520px);height:8px;background:var(--panel2);border-radius:99px;position:relative;overflow:hidden}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--ok);width:0}
+.meter em{position:absolute;top:0;bottom:0;width:2px;background:var(--accent)}
+.sens{display:flex;align-items:center;gap:10px;width:min(100%,520px)}
+.sens input{flex:1;accent-color:var(--accent)}
+.msg{color:var(--muted);text-align:center;max-width:52ch;margin:0}
+.msg.err{color:var(--bad)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Duel <span>Training</span></h1>
+      <p class="sub">ฟังโน้ต แล้วดีดตอบให้ทัน</p>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tabTrain" aria-selected="true">ฝึก</button>
+      <button class="tab" role="tab" id="tabMic" aria-selected="false">ทดสอบไมค์ / Tuner</button>
+    </div>
+  </header>
+
+  <main id="viewTrain" class="wrap" style="gap:14px">
+    <div class="bar">
+      <div class="grp"><span class="lbl">Level</span><div class="seg" id="segLevel"></div></div>
+      <div class="grp"><span class="lbl">ความยาก</span><div class="seg" id="segMode"></div></div>
+    </div>
+
+    <section class="card" aria-live="polite">
+      <div class="stage-top">
+        <div class="status" id="status"></div>
+        <div class="heard" id="heard"></div>
+      </div>
+      <div class="timer" id="timer" hidden><i id="timerBar"></i></div>
+      <div class="boardbox" id="board"></div>
+      <div class="actions" id="actions"></div>
+    </section>
+
+    <section class="stats" id="stats"></section>
+    <div class="chips" id="chips"></div>
+
+    <details>
+      <summary>ข้อมูลความก้าวหน้า (ส่งออก / นำเข้า)</summary>
+      <p class="note" style="margin-top:8px">กด "ส่งออก" แล้วคัดลอกข้อความไปเก็บไว้ หรือวางข้อความที่เคยส่งออกแล้วกด "นำเข้า" ข้อมูลเก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ถ้าล้างข้อมูล Safari จะหาย</p>
+      <textarea id="dataBox" spellcheck="false"></textarea>
+      <div class="actions"><button class="btn" id="btnExport">ส่งออก</button><button class="btn" id="btnImport">นำเข้า</button><span class="note" id="dataMsg"></span></div>
+    </details>
+  </main>
+
+  <main id="viewMic" class="wrap" hidden>
+    <section class="card tuner">
+      <div class="tnote" id="tNote">–</div>
+      <div class="thz" id="tHz">ยังไม่ได้ยินเสียง</div>
+      <div class="cents" aria-hidden="true"><i id="tCents"></i></div>
+      <div class="meter" aria-hidden="true"><i id="tMeter"></i><em id="tThr"></em></div>
+      <div class="sens"><span class="lbl">ความไวไมค์</span><input type="range" id="tSens" min="0.002" max="0.05" step="0.001"><span class="note" id="tSensVal"></span></div>
+      <button class="btn primary" id="btnMic">เปิดไมค์</button>
+      <p class="msg" id="micMsg">ดีดสายทีละสาย ดูว่าแอพอ่านโน้ตตรงกับที่ดีดไหม แถบสีเขียวกลางคือเสียงตรง ถ้าแอพไม่ได้ยินเสียงเบาๆ ให้เพิ่มความไว ถ้าจับเสียงรบกวนให้ลดลง</p>
+    </section>
+  </main>
+</div>
+
+<script>
+'use strict';
+/* ===== ข้อมูลคอกีต้าร์ (จูนมาตรฐาน EADGBE, ไม่รวมสายเปล่า) ===== */
+const OPEN=[64,59,55,50,45,40];                 // สาย 1..6 (index 0..5) เป็นเลข MIDI
+const STR_NAMES=['E','B','G','D','A','E'];
+const STR_COLORS=['#7377b5','#c984c5','#46917f','#cf9c66','#c05a5a','#7377b5'];
+const NAMES=['C','C♯','D','E♭','E','F','F♯','G','G♯','A','B♭','B'];
+const NATURAL=new Set([0,2,4,5,7,9,11]);
+const INLAY=new Set([3,5,7,9,12,15,17,19]);
+const LEVELS=[
+  {id:0,max:5, nat:true},
+  {id:1,max:5, nat:false},
+  {id:2,max:7, nat:false},
+  {id:3,max:9, nat:false},
+  {id:4,max:12,nat:false},
+  {id:5,max:20,nat:false}
+];
+const MODES=[{id:'easy',label:'Easy',ms:0},{id:'normal',label:'Normal',ms:10000},{id:'hard',label:'Hard',ms:3000}];
+const PASS_STREAK=10;                            // ผ่าน Level = ตอบถูกติดกันกี่ข้อ (ปรับได้)
+const midiName=m=>NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1);
+const noteOnly=m=>NAMES[((m%12)+12)%12];
+const midiHz=m=>440*Math.pow(2,(m-69)/12);
+const posText=p=>'สาย '+(p.s+1)+' เฟร็ต '+p.f;
+function positionsOf(m,max){
+  const out=[];
+  for(let s=0;s<6;s++){const f=m-OPEN[s]; if(f>=1&&f<=max) out.push({s,f});}
+  return out;
+}
+function poolFor(level){
+  const L=LEVELS[level], arr=[];
+  for(let s=0;s<6;s++) for(let f=1;f<=L.max;f++){
+    const m=OPEN[s]+f;
+    if(L.nat&&!NATURAL.has(m%12)) continue;
+    arr.push({s,f,m});
+  }
+  return arr;
+}
+
+/* ===== ตัวจับ pitch: McLeod Pitch Method ===== */
+//#MPM-START
+function mpm(x,sr){
+  const W=2048, maxLag=Math.min(900,x.length-W-2), minLag=Math.floor(sr/1300);
+  const nsdf=new Float32Array(maxLag+2);
+  let sqA=0; for(let j=0;j<W;j++) sqA+=x[j]*x[j];
+  let sqB=sqA;                                   // sum x[j+tau]^2 สำหรับ tau=0
+  for(let tau=0;tau<=maxLag;tau++){
+    let r=0; for(let j=0;j<W;j++) r+=x[j]*x[j+tau];
+    const m=sqA+sqB;
+    nsdf[tau]=m>1e-9?2*r/m:0;
+    sqB+=x[tau+W]*x[tau+W]-x[tau]*x[tau];
+  }
+  let i=1; while(i<maxLag&&nsdf[i]>0) i++;       // ข้ามช่วงบวกแรก (รอบ tau=0)
+  const peaks=[]; let cur=-1, curV=-1;
+  for(;i<=maxLag;i++){
+    if(nsdf[i]>0){ if(nsdf[i]>curV){curV=nsdf[i];cur=i;} }
+    else if(cur>0){ peaks.push(cur); cur=-1; curV=-1; }
+  }
+  if(cur>0) peaks.push(cur);
+  const good=peaks.filter(p=>p>=minLag&&p>1&&p<maxLag);
+  if(!good.length) return null;
+  let hi=0; for(const p of good) if(nsdf[p]>hi) hi=nsdf[p];
+  let pick=good[0];
+  for(const p of good){ if(nsdf[p]>=0.9*hi){pick=p;break;} }
+  const a=nsdf[pick-1], b=nsdf[pick], c=nsdf[pick+1], d=a-2*b+c;
+  const shift=d!==0?0.5*(a-c)/d:0;
+  return {freq:sr/(pick+shift), clarity:b};
+}
+//#MPM-END
+
+/* ===== เสียงโจทย์ (สังเคราะห์เสียงสายดีด ความถี่ตรงเป๊ะ) ===== */
+let ctx=null;
+const sampleCache=new Map();
+function ensureCtx(){
+  if(!ctx){const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC();}
+  if(ctx.state==='suspended') ctx.resume();
+  return ctx;
+}
+function pluckBuffer(m){
+  const sr=ctx.sampleRate, key=m+'@'+sr;
+  if(sampleCache.has(key)) return sampleCache.get(key);
+  const f=midiHz(m), len=Math.floor(sr*1.6), data=new Float32Array(len);
+  const nPart=Math.max(2,Math.min(14,Math.floor((sr/2-500)/f)));
+  let seed=m*7919+13; const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296*2-1;};
+  for(let n=1;n<=nPart;n++){
+    const amp=1/Math.pow(n,1.05), dec=1.5+0.85*n, w=2*Math.PI*n*f/sr;
+    for(let i=0;i<len;i++) data[i]+=amp*Math.exp(-dec*i/sr)*Math.sin(w*i);
+  }
+  const clickLen=Math.floor(sr*0.008);
+  for(let i=0;i<clickLen;i++) data[i]+=0.5*rnd()*(1-i/clickLen);
+  const att=Math.floor(sr*0.002); for(let i=0;i<att;i++) data[i]*=i/att;
+  let pk=0; for(let i=0;i<len;i++) pk=Math.max(pk,Math.abs(data[i]));
+  for(let i=0;i<len;i++) data[i]*=0.6/pk;
+  const buf=ctx.createBuffer(1,len,sr); buf.copyToChannel(data,0);
+  sampleCache.set(key,buf); return buf;
+}
+let curSrc=null;
+function playNote(m){
+  ensureCtx();
+  return new Promise(res=>{
+    stopSound();
+    const src=ctx.createBufferSource(); src.buffer=pluckBuffer(m);
+    const g=ctx.createGain(); g.gain.value=0.9;
+    src.connect(g); g.connect(ctx.destination);
+    src.onended=()=>res(); curSrc=src; src.start();
+  });
+}
+function stopSound(){ if(curSrc){try{curSrc.onended=null;curSrc.stop();}catch(e){} curSrc=null;} }
+
+/* ===== ไมค์ ===== */
+let micStream=null, analyser=null, micTried=false, micOk=false, micErr='';
+const buf=new Float32Array(4096);
+let loopId=null, silent=0, cand={m:null,n:0}, lastReported=null, lastNote=null;
+async function startMic(){
+  if(micStream) return true;
+  micTried=true;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    micErr='เบราว์เซอร์นี้ไม่ให้ใช้ไมค์ ต้องเปิดผ่าน HTTPS (ไม่ใช่ไฟล์ในเครื่อง)'; micOk=false; return false;
+  }
+  try{
+    micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  }catch(e){
+    micErr=(e&&e.name==='NotAllowedError')
+      ?'ไม่ได้รับอนุญาตใช้ไมค์ ไปที่ ตั้งค่า > Safari > ไมค์ แล้วเลือกอนุญาต จากนั้นโหลดหน้านี้ใหม่'
+      :'เปิดไมค์ไม่ได้ ('+(e&&e.name||'error')+')';
+    micOk=false; return false;
+  }
+  ensureCtx();
+  const src=ctx.createMediaStreamSource(micStream);
+  analyser=ctx.createAnalyser(); analyser.fftSize=4096; analyser.smoothingTimeConstant=0;
+  src.connect(analyser);                         // ไม่ต่อออกลำโพง กันเสียงตีกลับ
+  micOk=true; micErr='';
+  loopId=setInterval(frame,50);
+  return true;
+}
+function frame(){
+  if(!analyser) return;
+  analyser.getFloatTimeDomainData(buf);
+  let sum=0; for(let i=0;i<2048;i++) sum+=buf[i]*buf[i];
+  const rms=Math.sqrt(sum/2048);
+  let note=null;
+  if(rms>S.sens){
+    const r=mpm(buf,ctx.sampleRate);
+    if(r&&r.clarity>0.85&&r.freq>70&&r.freq<1250){
+      const mf=69+12*Math.log2(r.freq/440), m=Math.round(mf);
+      note={m,cents:(mf-m)*100,freq:r.freq};
+    }
+    silent=0;
+  }else silent++;
+  if(silent>=6){ lastReported=null; }
+  if(note){ cand=(cand.m===note.m)?{m:note.m,n:cand.n+1}:{m:note.m,n:1}; lastNote=note; }
+  else if(rms<=S.sens){ cand={m:null,n:0}; }
+  paintLive(rms,note);
+  if(note&&cand.n>=3&&S.phase==='listening'&&cand.m!==lastReported){
+    lastReported=cand.m; onPlayed(cand.m);
+  }
+}
+function paintLive(rms,note){
+  const h=$('#heard');
+  if(S.phase==='listening') h.textContent=note?('ได้ยิน '+midiName(note.m)):'';
+  if(S.tab==='mic'){
+    $('#tMeter').style.width=Math.min(100,rms/0.1*100)+'%';
+    $('#tThr').style.left=Math.min(100,S.sens/0.1*100)+'%';
+    if(note){
+      $('#tNote').textContent=noteOnly(note.m);
+      $('#tHz').textContent=midiName(note.m)+' · '+note.freq.toFixed(1)+' Hz · '+(note.cents>=0?'+':'')+note.cents.toFixed(0)+' เซ็นต์';
+      $('#tCents').style.left=(50+Math.max(-50,Math.min(50,note.cents))*0.9)+'%';
+    }else if(rms<=S.sens){
+      $('#tNote').textContent='–'; $('#tHz').textContent='ยังไม่ได้ยินเสียง'; $('#tCents').style.left='50%';
+    }
+  }
+}
+
+/* ===== สถานะแอพ ===== */
+const $=s=>document.querySelector(s);
+const KEY='duelTraining.v1';
+const S={tab:'train',level:0,mode:'easy',sens:0.01,stats:{},phase:'idle',
+  target:null,qid:0,missed:false,hint:'',result:null,played:null,lastM:null,deadline:0,timerId:null};
+function load(){
+  try{
+    const o=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(o){ if(o.level>=0&&o.level<LEVELS.length) S.level=o.level;
+      if(MODES.some(m=>m.id===o.mode)) S.mode=o.mode;
+      if(o.sens>0) S.sens=o.sens; if(o.stats&&typeof o.stats==='object') S.stats=o.stats; }
+  }catch(e){}
+}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify({v:1,level:S.level,mode:S.mode,sens:S.sens,stats:S.stats}));}catch(e){}
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const statKey=()=>S.level+':'+S.mode;
+function st(key){ return S.stats[key||statKey()]||(S.stats[key||statKey()]={c:0,t:0,streak:0,best:0,passed:false}); }
+
+/* ===== เกม ===== */
+async function startQuestion(){
+  const qid=++S.qid;
+  ensureCtx();
+  if(!micTried) await startMic();
+  if(qid!==S.qid) return;
+  const pool=poolFor(S.level);
+  let t; do{ t=pool[Math.floor(Math.random()*pool.length)]; }while(pool.length>1&&t.m===S.lastM);
+  S.target=t; S.lastM=t.m; S.missed=false; S.hint=''; S.result=null; S.played=null;
+  S.phase='playing'; render();
+  await playNote(t.m); if(qid!==S.qid) return;
+  await sleep(450);   if(qid!==S.qid) return;      // รอเสียงโจทย์จางก่อนเปิดฟัง
+  beginListening();
+}
+function beginListening(){
+  S.phase='listening'; lastReported=null; cand={m:null,n:0}; S.hint='';
+  const ms=MODES.find(m=>m.id===S.mode).ms;
+  clearInterval(S.timerId);
+  if(ms){
+    S.deadline=Date.now()+ms;
+    S.timerId=setInterval(()=>{
+      const left=S.deadline-Date.now();
+      $('#timerBar').style.transform='scaleX('+Math.max(0,left/ms)+')';
+      if(left<=0) finish(false,null,'timeout');
+    },60);
+  }
+  render();
+}
+function onPlayed(m){
+  if(S.phase!=='listening') return;
+  if(m===S.target.m){ finish(true,m); return; }
+  if(S.mode==='easy'){
+    S.missed=true;
+    const d=m-S.target.m;
+    if(d%12===0) S.hint='ได้ยิน '+midiName(m)+' ชื่อโน้ตถูก แต่ผิดช่วงเสียง ลอง'+(d>0?'ต่ำลง':'สูงขึ้น')+'อีก '+Math.abs(d/12)+' ช่วงเสียง';
+    else S.hint='ได้ยิน '+midiName(m)+' · '+(d>0?'สูงไป ':'ต่ำไป ')+Math.abs(d)+' เซมิโทน';
+    render();
+  }else finish(false,m);
+}
+function finish(ok,playedM,reason){
+  if(S.phase!=='listening') return;
+  clearInterval(S.timerId);
+  const s=st(); s.t++;
+  if(ok&&!S.missed){ s.c++; s.streak++; s.best=Math.max(s.best,s.streak); if(s.streak>=PASS_STREAK) s.passed=true; }
+  else s.streak=0;
+  save();
+  S.phase='revealed'; S.played=playedM;
+  S.result={ok,reason,clean:ok&&!S.missed};
+  render();
+}
+function resetRound(){ S.qid++; stopSound(); clearInterval(S.timerId); S.phase='idle'; S.hint=''; S.result=null; render(); }
+
+/* ===== วาดคอกีต้าร์ ===== */
+function boardSVG(max,marks){
+  const fw=60,left=84,top=34,gap=46,W=left+max*fw+16,H=top+5*gap+70,bTop=top-26,bH=5*gap+52;
+  let g='';
+  g+=`<rect x="${left}" y="${bTop}" width="${max*fw}" height="${bH}" rx="6" fill="var(--board)"/>`;
+  for(let f=0;f<=max;f++){
+    const x=left+f*fw;
+    g+=`<line x1="${x}" y1="${bTop}" x2="${x}" y2="${bTop+bH}" stroke="var(--wire)" stroke-width="${f===0?5:1.6}" opacity="${f===0?.9:.5}"/>`;
+  }
+  const sw=[1,1.4,2,2.8,3.6,4.6];
+  for(let s=0;s<6;s++){
+    const y=top+s*gap;
+    g+=`<line x1="${left}" y1="${y}" x2="${left+max*fw}" y2="${y}" stroke="var(--string)" stroke-width="${sw[s]}" opacity=".75"/>`;
+    g+=`<rect x="20" y="${y-17}" width="36" height="34" rx="4" fill="none" stroke="${STR_COLORS[s]}" stroke-width="3"/>`;
+    g+=`<text x="38" y="${y+6}" text-anchor="middle" font-size="16" font-weight="700" fill="${STR_COLORS[s]}" font-family="var(--mono)">${STR_NAMES[s]}</text>`;
+  }
+  for(let s=0;s<6;s++) for(let f=1;f<=max;f++){
+    const cx=left+(f-0.5)*fw, cy=top+s*gap;
+    const mk=marks.find(k=>k.s===s&&k.f===f);
+    const fill=mk?(mk.kind==='ok'?'var(--ok)':'var(--bad)'):'var(--board2)';
+    const stroke=mk?'none':'var(--string)';
+    g+=`<circle class="pos" data-s="${s}" data-f="${f}" cx="${cx}" cy="${cy}" r="17" fill="${fill}" stroke="${stroke}" stroke-width="1.6" stroke-opacity=".7"/>`;
+    if(mk) g+=`<text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="14" font-weight="700" fill="#10100e" font-family="var(--body)" pointer-events="none">${noteOnly(OPEN[s]+f)}</text>`;
+  }
+  for(let f=1;f<=max;f++){
+    const x=left+(f-0.5)*fw, big=INLAY.has(f);
+    g+=`<text x="${x}" y="${bTop+bH+26}" text-anchor="middle" font-size="${big?18:14}" font-weight="${big?700:400}" fill="${big?'var(--accent)':'var(--muted)'}" font-family="var(--mono)">${f}</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="คอกีต้าร์ เฟร็ต 1 ถึง ${max}">${g}</svg>`;
+}
+
+/* ===== วาดหน้าจอ ===== */
+function render(){
+  const L=LEVELS[S.level];
+  $('#segLevel').innerHTML=LEVELS.map(l=>`<button data-level="${l.id}" aria-pressed="${l.id===S.level}">${l.id}</button>`).join('');
+  $('#segMode').innerHTML=MODES.map(m=>`<button data-mode="${m.id}" aria-pressed="${m.id===S.mode}">${m.label}${m.ms?' · '+m.ms/1000+' วิ':''}</button>`).join('');
+
+  const stEl=$('#status'); stEl.className='status';
+  let status='',sub='';
+  const tapMode=(S.phase==='listening')&&!micOk;
+  if(S.phase==='idle'){
+    status='พร้อมดวล'; sub='Level '+L.id+' · เฟร็ต 1–'+L.max+' · '+(L.nat?'โน้ตธรรมชาติ':'ครบ 12 เสียง')+' · ทุกสาย';
+  }else if(S.phase==='playing'){ status='ฟังให้ดี…'; sub='กำลังเล่นโน้ตโจทย์'; }
+  else if(S.phase==='listening'){
+    status='ดีดเลย!'; sub=S.hint||(micOk?'ดีดโน้ตที่ได้ยินบนกีต้าร์':'ไมค์ไม่พร้อม แตะตำแหน่งบนคอแทนการดีด');
+  }else{
+    const t=S.target, tp=positionsOf(t.m,L.max).map(posText).join(' หรือ ');
+    if(S.result.ok){ stEl.classList.add('ok'); status='ถูก! '+midiName(t.m); sub=S.result.clean?tp:'ตอบถูกแล้ว แต่พลาดมาก่อน ('+tp+')'; }
+    else{ stEl.classList.add('bad');
+      status=S.result.reason==='timeout'?'หมดเวลา':(S.played?'ผิด · ได้ยิน '+midiName(S.played):'ยังไม่ถูก');
+      sub='โจทย์คือ '+midiName(t.m)+' อยู่ที่ '+tp; }
+  }
+  stEl.innerHTML=status+(sub?`<small>${sub}</small>`:'');
+
+  const marks=[];
+  if(S.phase==='revealed'){
+    if(S.played&&S.played!==S.target.m) positionsOf(S.played,L.max).forEach(p=>marks.push({...p,kind:'bad'}));
+    positionsOf(S.target.m,L.max).forEach(p=>marks.push({...p,kind:'ok'}));
+  }
+  const bx=$('#board'); bx.className='boardbox'+(tapMode?' tap':'');
+  bx.innerHTML=boardSVG(L.max,marks);
+  $('#timer').hidden=!(S.phase==='listening'&&MODES.find(m=>m.id===S.mode).ms);
+  if(S.phase!=='listening') $('#heard').textContent='';
+
+  let a='';
+  if(S.phase==='idle') a=`<button class="btn primary" data-act="start">เริ่มโจทย์</button>`;
+  else if(S.phase==='playing') a=`<button class="btn" data-act="stop">หยุด</button>`;
+  else if(S.phase==='listening'){
+    a=`<button class="btn" data-act="replay">ฟังโจทย์ซ้ำ</button>`;
+    if(S.mode==='easy') a+=`<button class="btn" data-act="giveup">เฉลย</button>`;
+    a+=`<button class="btn" data-act="stop">หยุด</button>`;
+  }else a=`<button class="btn primary" data-act="start">ข้อต่อไป</button><button class="btn" data-act="stop">หยุด</button>`;
+  if(!micOk&&micTried) a+=`<span class="note">${micErr}</span>`;
+  $('#actions').innerHTML=a;
+
+  const s=st();
+  $('#stats').innerHTML=
+    `<div class="stat"><b>${s.c}/${s.t}</b><span>ถูก / ทั้งหมด</span></div>`+
+    `<div class="stat"><b>${s.streak}</b><span>ถูกติดกัน</span></div>`+
+    `<div class="stat"><b>${s.best}</b><span>สูงสุด</span></div>`+
+    `<div class="stat"><b>${s.t?Math.round(100*s.c/s.t):0}%</b><span>แม่นยำ</span></div>`;
+  $('#chips').innerHTML=`<span>ผ่าน Level ${S.level} = ถูกติดกัน ${PASS_STREAK} ข้อ</span>`+
+    MODES.map(m=>{const x=S.stats[S.level+':'+m.id];return `<span class="chip ${x&&x.passed?'done':''}">${m.label}${x&&x.passed?' ✓':''}</span>`;}).join('');
+}
+
+/* ===== เหตุการณ์ ===== */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button,circle'); if(!t) return;
+  if(t.dataset.level!==undefined){ S.level=+t.dataset.level; save(); resetRound(); return; }
+  if(t.dataset.mode){ S.mode=t.dataset.mode; save(); resetRound(); return; }
+  if(t.dataset.act==='start') startQuestion();
+  else if(t.dataset.act==='stop') resetRound();
+  else if(t.dataset.act==='replay'){ if(S.phase==='listening'){ const q=++S.qid; S.phase='playing'; render(); playNote(S.target.m).then(()=>sleep(450)).then(()=>{ if(q===S.qid) beginListening(); }); } }
+  else if(t.dataset.act==='giveup') finish(false,null,'giveup');
+  else if(t.classList&&t.classList.contains('pos')&&S.phase==='listening'&&!micOk){
+    onPlayed(OPEN[+t.dataset.s]+(+t.dataset.f));
+  }
+});
+function showTab(name){
+  S.tab=name;
+  $('#viewTrain').hidden=name!=='train'; $('#viewMic').hidden=name!=='mic';
+  $('#tabTrain').setAttribute('aria-selected',name==='train'); $('#tabMic').setAttribute('aria-selected',name==='mic');
+}
+$('#tabTrain').onclick=()=>showTab('train');
+$('#tabMic').onclick=()=>showTab('mic');
+$('#btnMic').onclick=async()=>{
+  ensureCtx();
+  const ok=await startMic();
+  const m=$('#micMsg');
+  if(ok){ m.className='msg'; m.textContent='ไมค์เปิดแล้ว ดีดสายดูได้เลย'; $('#btnMic').textContent='ไมค์เปิดอยู่'; $('#btnMic').disabled=true; }
+  else{ m.className='msg err'; m.textContent=micErr; }
+};
+const sens=$('#tSens');
+function showSens(){ $('#tSensVal').textContent=S.sens.toFixed(3); }
+sens.oninput=()=>{ S.sens=+sens.value; showSens(); save(); };
+$('#btnExport').onclick=async()=>{
+  const box=$('#dataBox'); box.value=JSON.stringify({v:1,level:S.level,mode:S.mode,sens:S.sens,stats:S.stats});
+  box.select();
+  let m='ส่งออกแล้ว คัดลอกข้อความในช่องได้เลย';
+  try{ await navigator.clipboard.writeText(box.value); m='ส่งออกและคัดลอกแล้ว'; }catch(e){}
+  $('#dataMsg').textContent=m;
+};
+$('#btnImport').onclick=()=>{
+  try{
+    const o=JSON.parse($('#dataBox').value);
+    if(!o||typeof o.stats!=='object') throw 0;
+    S.stats=o.stats;
+    if(o.level>=0&&o.level<LEVELS.length) S.level=o.level;
+    if(MODES.some(m=>m.id===o.mode)) S.mode=o.mode;
+    if(o.sens>0){S.sens=o.sens; sens.value=S.sens; showSens();}
+    save(); resetRound(); $('#dataMsg').textContent='นำเข้าแล้ว';
+  }catch(e){ $('#dataMsg').textContent='ข้อมูลไม่ถูกต้อง'; }
+};
+
+load(); sens.value=S.sens; showSens(); render();
+</script>
+</body>
+</html>
